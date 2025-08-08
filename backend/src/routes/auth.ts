@@ -294,22 +294,64 @@ router.get('/verify-email', async (req, res, next) => {
       });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token as string, process.env.JWT_SECRET!) as { userId: string };
+    // Verify token using primary secret, then fallback secret if needed
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token as string, process.env.JWT_SECRET!);
+    } catch (e) {
+      try {
+        const fallbackSecret = process.env.JWT_SECRET_FALLBACK || 'fallback-secret-key';
+        decoded = jwt.verify(token as string, fallbackSecret);
+      } catch (e2) {
+        const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
+        const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
+        if (shouldRedirect && frontendUrl) {
+          return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=invalid`);
+        }
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid or expired verification token'
+        });
+      }
+    }
+
+    const userId = decoded?.userId || decoded?.id || decoded?.sub;
+
+    if (!userId || typeof userId !== 'string') {
+      const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
+      const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
+      if (shouldRedirect && frontendUrl) {
+        return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=invalid`);
+      }
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired verification token'
+      });
+    }
     
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: decoded.userId }
+      where: { id: userId }
     });
 
     if (!existingUser) {
-      return res.status(404).json({
+      const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
+      const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
+      if (shouldRedirect && frontendUrl) {
+        return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=invalid`);
+      }
+      return res.status(400).json({
         success: false,
-        error: 'User not found'
+        error: 'Invalid or expired verification token'
       });
     }
 
     if (existingUser.isVerified) {
+      const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
+      const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
+      if (shouldRedirect && frontendUrl) {
+        return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=already`);
+      }
       return res.status(400).json({
         success: false,
         error: 'Email is already verified'
@@ -318,9 +360,16 @@ router.get('/verify-email', async (req, res, next) => {
 
     // Update user
     const user = await prisma.user.update({
-      where: { id: decoded.userId },
+      where: { id: userId },
       data: { isVerified: true }
     });
+
+    // If FRONTEND_URL is configured and redirect is not explicitly disabled, redirect to frontend
+    const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
+    if (shouldRedirect && frontendUrl) {
+      return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=success`);
+    }
 
     res.json({
       success: true,
@@ -338,6 +387,11 @@ router.get('/verify-email', async (req, res, next) => {
     });
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
+      const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
+      const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
+      if (shouldRedirect && frontendUrl) {
+        return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=invalid`);
+      }
       return res.status(400).json({
         success: false,
         error: 'Invalid or expired verification token'

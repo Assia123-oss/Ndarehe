@@ -71,7 +71,8 @@ export const authApi = {
   },
 
   verifyEmail: async (token: string) => {
-    return apiRequest<ApiResponse<any>>(`/auth/verify-email?token=${token}`, {
+    const encoded = encodeURIComponent(token);
+    return apiRequest<ApiResponse<any>>(`/auth/verify-email?token=${encoded}`, {
       method: 'GET',
     });
   },

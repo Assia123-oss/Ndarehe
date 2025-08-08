@@ -36,16 +36,19 @@ export const sendEmail = async (
 export const emailTemplates = {
   welcome: (firstName: string, verificationToken: string) => {
     const subject = 'Welcome to NDAREHE - Verify Your Email';
+    const backendBase = process.env.BACKEND_URL || process.env.API_BASE_URL || process.env.BASE_URL || '';
+    const encodedToken = encodeURIComponent(verificationToken);
+    const verifyUrl = `${backendBase}/api/auth/verify-email?token=${encodedToken}&redirect=true`;
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Welcome to NDAREHE, ${firstName}!</h2>
         <p>Thank you for joining our platform. Please verify your email address to get started.</p>
-        <a href="${process.env.BASE_URL}/verify-email?token=${verificationToken}" 
+        <a href="${verifyUrl}" 
            style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
           Verify Email
         </a>
         <p>If the button doesn't work, copy and paste this link into your browser:</p>
-        <p>${process.env.BASE_URL}/verify-email?token=${verificationToken}</p>
+        <p>${verifyUrl}</p>
       </div>
     `;
     return { subject, html };

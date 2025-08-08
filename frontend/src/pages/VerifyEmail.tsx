@@ -18,10 +18,28 @@ const VerifyEmail = () => {
 
   useEffect(() => {
     const verifyEmail = async () => {
+      const status = searchParams.get('status');
       const token = searchParams.get('token');
-      
-      console.log('Verification token:', token); // Debug log
-      
+
+      // If we were redirected back from the backend with a status, honor it and don't call the API again
+      if (status) {
+        if (status === 'success') {
+          setVerificationStatus('success');
+          updateUserVerification(true);
+          toast({ title: 'Email Verified!', description: 'Your email has been verified successfully. You can now access all features.' });
+        } else if (status === 'already') {
+          setVerificationStatus('success');
+          updateUserVerification(true);
+          toast({ title: 'Email Already Verified', description: 'Your email was already verified. You are good to go!' });
+        } else {
+          setVerificationStatus('error');
+          setErrorMessage('Invalid or expired verification link.');
+          toast({ title: 'Verification Failed', description: 'Invalid or expired verification link.', variant: 'destructive' });
+        }
+        return;
+      }
+
+      // Fallback: support direct hits to the frontend /verify-email?token=... route
       if (!token) {
         setVerificationStatus('error');
         setErrorMessage('No verification token found in the URL');
@@ -29,30 +47,22 @@ const VerifyEmail = () => {
       }
 
       try {
-        console.log('Making API call to verify email...'); // Debug log
         const response = await authApi.verifyEmail(token);
-        console.log('API response:', response); // Debug log
-        
         if (response.success) {
           setVerificationStatus('success');
           updateUserVerification(true);
           toast({
-            title: "Email Verified!",
-            description: "Your email has been verified successfully. You can now access all features.",
+            title: 'Email Verified!',
+            description: 'Your email has been verified successfully. You can now access all features.',
           });
         } else {
           setVerificationStatus('error');
           setErrorMessage(response.message || 'Verification failed');
         }
       } catch (error: any) {
-        console.error('Verification error:', error); // Debug log
         setVerificationStatus('error');
         setErrorMessage(error.message || 'Verification failed. Please try again.');
-        toast({
-          title: "Verification Failed",
-          description: error.message || "Failed to verify email. Please try again.",
-          variant: "destructive",
-        });
+        toast({ title: 'Verification Failed', description: error.message || 'Failed to verify email. Please try again.', variant: 'destructive' });
       }
     };
 
