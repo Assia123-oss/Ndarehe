@@ -439,6 +439,56 @@ router.put('/users/:id/status', async (req: AuthRequest, res: Response, next: Ne
   }
 });
 
+// @desc    Permanently delete user (Admin only)
+// @route   DELETE /api/admin/users/:id
+// @access  Private (Admin only)
+router.delete('/users/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if user has active bookings
+    const activeBookings = await prisma.booking.findFirst({
+      where: {
+        userId: id,
+        status: {
+          in: ['PENDING', 'CONFIRMED']
+        }
+      }
+    });
+
+    if (activeBookings) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot delete user with active bookings. Please deactivate instead.'
+      });
+    }
+
+    // Delete user (this will cascade to related records due to Prisma schema)
+    await prisma.user.delete({
+      where: { id }
+    });
+
+    res.json({
+      success: true,
+      message: 'User deleted permanently'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // @desc    Get all bookings
 // @route   GET /api/admin/bookings
 // @access  Private (Admin only)

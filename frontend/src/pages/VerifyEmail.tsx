@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,60 +14,73 @@ const VerifyEmail = () => {
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
-  const { updateUserVerification } = useAuth();
+  const { updateUserVerification, refreshUser } = useAuth(); 
+  const hasVerified = useRef(false);
 
   useEffect(() => {
     const verifyEmail = async () => {
-      const status = searchParams.get('status');
-      const token = searchParams.get('token');
-
-      // If we were redirected back from the backend with a status, honor it and don't call the API again
-      if (status) {
-        if (status === 'success') {
-          setVerificationStatus('success');
-          updateUserVerification(true);
-          toast({ title: 'Email Verified!', description: 'Your email has been verified successfully. You can now access all features.' });
-        } else if (status === 'already') {
-          setVerificationStatus('success');
-          updateUserVerification(true);
-          toast({ title: 'Email Already Verified', description: 'Your email was already verified. You are good to go!' });
-        } else {
-          setVerificationStatus('error');
-          setErrorMessage('Invalid or expired verification link.');
-          toast({ title: 'Verification Failed', description: 'Invalid or expired verification link.', variant: 'destructive' });
-        }
+      // Prevent multiple verification attempts
+      if (hasVerified.current) {
         return;
       }
 
-      // Fallback: support direct hits to the frontend /verify-email?token=... route
+      const token = searchParams.get('token');
+      
       if (!token) {
         setVerificationStatus('error');
         setErrorMessage('No verification token found in the URL');
         return;
       }
 
+      // Mark as attempting verification to prevent duplicates
+      hasVerified.current = true;
+
       try {
         const response = await authApi.verifyEmail(token);
+        
         if (response.success) {
           setVerificationStatus('success');
           updateUserVerification(true);
+          await refreshUser(); 
           toast({
-            title: 'Email Verified!',
-            description: 'Your email has been verified successfully. You can now access all features.',
+            title: "Email Verified!",
+            description: response.message || "Your email has been verified successfully.",
           });
         } else {
           setVerificationStatus('error');
           setErrorMessage(response.message || 'Verification failed');
+          toast({
+            title: "Verification Failed",
+            description: response.message || "Failed to verify your email. Please try again.",
+            variant: "destructive",
+          });
         }
       } catch (error: any) {
         setVerificationStatus('error');
-        setErrorMessage(error.message || 'Verification failed. Please try again.');
-        toast({ title: 'Verification Failed', description: error.message || 'Failed to verify email. Please try again.', variant: 'destructive' });
+        
+        // Handle rate limit errors specifically
+        if (error.status === 429) {
+          const message = error.message || 'Too many verification attempts. Please wait a moment before trying again.';
+          setErrorMessage(message);
+          toast({
+            title: "Please Wait",
+            description: message,
+            variant: "destructive",
+          });
+        } else {
+          const message = error.message || 'Verification failed. Please try again.';
+          setErrorMessage(message);
+          toast({
+            title: "Verification Failed",
+            description: message,
+            variant: "destructive",
+          });
+        }
       }
     };
 
     verifyEmail();
-  }, [searchParams, toast, updateUserVerification]);
+  }, [searchParams]);
 
   const renderContent = () => {
     switch (verificationStatus) {

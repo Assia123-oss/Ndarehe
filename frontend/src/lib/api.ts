@@ -1,6 +1,6 @@
 // API utility for consistent backend calls
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -71,9 +71,9 @@ export const authApi = {
   },
 
   verifyEmail: async (token: string) => {
-    const encoded = encodeURIComponent(token);
-    return apiRequest<ApiResponse<any>>(`/auth/verify-email?token=${encoded}`, {
-      method: 'GET',
+    return apiRequest<ApiResponse<any>>('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
     });
   },
 
@@ -82,10 +82,6 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
-  },
-
-  getCurrentUser: async () => {
-    return apiRequest<ApiResponse<{ user: any }>>('/auth/me');
   },
 };
 

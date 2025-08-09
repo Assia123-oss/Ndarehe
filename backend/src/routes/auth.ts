@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { prisma } from '../config/database';
 import { protect } from '../middleware/auth';
 import { validate, authSchemas } from '../middleware/validation';
@@ -9,6 +10,48 @@ import { generateToken, generateEmailVerificationToken, generatePasswordResetTok
 import { AuthenticatedRequest, JWTPayload } from '../types';
 
 const router = express.Router();
+
+// In-memory store to track recently processed verification tokens
+// In production, consider using Redis for this
+const recentlyProcessedTokens = new Map<string, number>();
+
+// Clean up old tokens every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  const fiveMinutesAgo = now - 5 * 60 * 1000;
+  
+  for (const [token, timestamp] of recentlyProcessedTokens.entries()) {
+    if (timestamp < fiveMinutesAgo) {
+      recentlyProcessedTokens.delete(token);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// Rate limiter for email verification - more restrictive
+const emailVerificationLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 3, // limit each IP to 3 email verification requests per minute
+  message: {
+    success: false,
+    data: null,
+    message: 'Too many verification attempts. Please wait a moment before trying again.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter for resend verification - even more restrictive
+const resendVerificationLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 2, // limit each IP to 2 resend requests per 5 minutes
+  message: {
+    success: false,
+    data: null,
+    message: 'Too many resend requests. Please wait 5 minutes before requesting another verification email.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @swagger
@@ -281,55 +324,37 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
 });
 
 // @desc    Verify email
-// @route   GET /api/auth/verify-email
+// @route   POST /api/auth/verify-email
 // @access  Public
-router.get('/verify-email', async (req, res, next) => {
+router.post('/verify-email', emailVerificationLimiter, async (req, res, next) => {
   try {
-    const { token } = req.query;
+    const { token } = req.body;
 
     if (!token) {
       return res.status(400).json({
         success: false,
-        error: 'Verification token is required'
+        data: null,
+        message: 'Verification token is required'
       });
     }
 
-    // Verify token using primary secret, then fallback secret if needed
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token as string, process.env.JWT_SECRET!);
-    } catch (e) {
-      try {
-        const fallbackSecret = process.env.JWT_SECRET_FALLBACK || 'fallback-secret-key';
-        decoded = jwt.verify(token as string, fallbackSecret);
-      } catch (e2) {
-        const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
-        const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
-        if (shouldRedirect && frontendUrl) {
-          return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=invalid`);
-        }
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid or expired verification token'
-        });
-      }
-    }
-
-    const userId = decoded?.userId || decoded?.id || decoded?.sub;
-
-    if (!userId || typeof userId !== 'string') {
-      const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
-      const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
-      if (shouldRedirect && frontendUrl) {
-        return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=invalid`);
-      }
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid or expired verification token'
-      });
-    }
+    // Check if this token was recently processed
+    const now = Date.now();
+    const recentlyProcessed = recentlyProcessedTokens.get(token);
     
-    // Check if user exists
+    if (recentlyProcessed && (now - recentlyProcessed) < 30000) { // 30 seconds
+      return res.status(429).json({
+        success: false,
+        data: null,
+        message: 'This verification link was recently used. Please wait a moment before trying again.'
+      });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+    const userId = decoded.userId;
+    
+    // Check if user exists and get current verification status
     const existingUser = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -342,48 +367,41 @@ router.get('/verify-email', async (req, res, next) => {
       }
       return res.status(400).json({
         success: false,
-        error: 'Invalid or expired verification token'
+        data: null,
+        message: 'User not found'
       });
     }
 
+    // Check if already verified
     if (existingUser.isVerified) {
-      const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
-      const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
-      if (shouldRedirect && frontendUrl) {
-        return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=already`);
-      }
-      return res.status(400).json({
-        success: false,
-        error: 'Email is already verified'
+      return res.json({
+        success: true,
+        data: { user: { id: existingUser.id, email: existingUser.email, isVerified: existingUser.isVerified } },
+        message: 'Email is already verified'
       });
     }
+    
+    // Mark token as processed to prevent duplicates
+    recentlyProcessedTokens.set(token, now);
 
-    // Update user
+    // Update user verification status
     const user = await prisma.user.update({
       where: { id: userId },
       data: { isVerified: true }
     });
 
-    // If FRONTEND_URL is configured and redirect is not explicitly disabled, redirect to frontend
-    const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
-    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
-    if (shouldRedirect && frontendUrl) {
-      return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=success`);
+    // Send verification success email
+    try {
+      const { subject, html } = emailTemplates.emailVerified(user.firstName);
+      await sendEmail(user.email, subject, html);
+    } catch (emailError) {
+      console.error('Failed to send verification success email:', emailError);
     }
 
     res.json({
       success: true,
-      message: 'Email verified successfully',
-      data: {
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          role: user.role,
-          isVerified: user.isVerified
-        }
-      }
+      data: { user: { id: user.id, email: user.email, isVerified: user.isVerified } },
+      message: 'Email verified successfully'
     });
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
@@ -394,16 +412,18 @@ router.get('/verify-email', async (req, res, next) => {
       }
       return res.status(400).json({
         success: false,
-        error: 'Invalid or expired verification token'
+        data: null,
+        message: 'Invalid or expired verification token'
       });
     }
     next(error);
   }
 });
+
 // @desc    Resend verification email
 // @route   POST /api/auth/resend-verification
 // @access  Public
-router.post('/resend-verification', async (req, res, next) => {
+router.post('/resend-verification', resendVerificationLimiter, async (req, res, next) => {
   try {
     const { email } = req.body;
 
