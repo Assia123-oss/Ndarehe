@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,8 @@ interface Transportation {
 
 const Transportation = () => {
   const [transportation, setTransportation] = useState<Transportation[]>([]);
+  const location = useLocation();
+  const inDashboard = location.pathname.startsWith('/dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedType, setSelectedType] = useState("all");
@@ -165,10 +167,8 @@ const Transportation = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
+    const content = (
+      <div className="container mx-auto px-4 py-8">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -178,25 +178,29 @@ const Transportation = () => {
             </div>
           </div>
         </div>
+    );
+    return inDashboard ? content : (
+      <div className="min-h-screen bg-background">
+        <Header />
+        {content}
         <Footer />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
+  const main = (
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-6">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
-              <Link to="/explore">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Explore
-              </Link>
-            </Button>
+            {!inDashboard && (
+              <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
+                <Link to="/explore">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Explore
+                </Link>
+              </Button>
+            )}
           </div>
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
@@ -510,7 +514,12 @@ const Transportation = () => {
           onClose={() => setShowVerificationReminder(false)}
         />
       </main>
+  );
 
+  return inDashboard ? main : (
+    <div className="min-h-screen bg-background">
+      <Header />
+      {main}
       <Footer />
     </div>
   );

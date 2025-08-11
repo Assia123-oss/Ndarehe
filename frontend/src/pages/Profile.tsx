@@ -22,6 +22,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { userApi } from "@/lib/api";
 
 interface UserProfile {
   id: string;
@@ -69,46 +70,36 @@ const Profile = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/users/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.data.user);
+      const res = await userApi.getProfile();
+      if (res.success && res.data.user) {
+        const u = res.data.user;
+        setProfile({
+          id: u.id,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          email: u.email,
+          phone: u.phone,
+          dateOfBirth: u.dateOfBirth ? new Date(u.dateOfBirth).toISOString().slice(0, 10) : "",
+          nationality: u.nationality,
+          language: u.language || 'en',
+          isEmailVerified: Boolean(u.isVerified),
+          createdAt: u.createdAt,
+        });
         setEditForm({
-          firstName: data.data.user.firstName || "",
-          lastName: data.data.user.lastName || "",
-          phone: data.data.user.phone || "",
-          dateOfBirth: data.data.user.dateOfBirth || "",
-          nationality: data.data.user.nationality || ""
+          firstName: u.firstName || "",
+          lastName: u.lastName || "",
+          phone: u.phone || "",
+          // normalize to YYYY-MM-DD for date input
+          dateOfBirth: u.dateOfBirth ? new Date(u.dateOfBirth).toISOString().slice(0, 10) : "",
+          nationality: u.nationality || "",
         });
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
-      // Use mock data for demonstration
-      const mockProfile = {
-        id: "1",
-        firstName: user?.firstName || "John",
-        lastName: user?.lastName || "Doe",
-        email: user?.email || "john.doe@example.com",
-        phone: "+250 788 123 456",
-        dateOfBirth: "1990-01-01",
-        nationality: "Rwandan",
-        language: "en",
-        isEmailVerified: true,
-        createdAt: "2024-01-01"
-      };
-      setProfile(mockProfile);
-      setEditForm({
-        firstName: mockProfile.firstName,
-        lastName: mockProfile.lastName,
-        phone: mockProfile.phone,
-        dateOfBirth: mockProfile.dateOfBirth,
-        nationality: mockProfile.nationality
+      toast({
+        title: "Error",
+        description: "Failed to load profile",
+        variant: "destructive",
       });
     }
   };
@@ -116,19 +107,9 @@ const Profile = () => {
   const handleProfileUpdate = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/users/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(editForm),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.data.user);
+      const res = await userApi.updateProfile(editForm);
+      if (res.success && res.data.user) {
+        setProfile(res.data.user);
         setIsEditing(false);
         toast({
           title: "Profile Updated",

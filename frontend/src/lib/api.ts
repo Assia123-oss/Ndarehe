@@ -83,6 +83,10 @@ export const authApi = {
       body: JSON.stringify({ email }),
     });
   },
+  // Get current authenticated user
+  getCurrentUser: async () => {
+    return apiRequest<ApiResponse<{ user: any }>>('/auth/me');
+  },
 };
 
 // User API calls
@@ -95,6 +99,32 @@ export const userApi = {
     return apiRequest<ApiResponse<{ user: any }>>('/users/profile', {
       method: 'PUT',
       body: JSON.stringify(profileData),
+    });
+  },
+  // Notifications
+  getNotifications: async (params?: { page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.append(key, String(value));
+      });
+    }
+    const qs = searchParams.toString();
+    return apiRequest<ApiResponse<{ notifications: any[]; pagination: any }>>(
+      `/users/notifications${qs ? `?${qs}` : ''}`
+    );
+  },
+  getUnreadNotificationsCount: async () => {
+    return apiRequest<ApiResponse<{ count: number }>>('/users/notifications/unread-count');
+  },
+  markNotificationRead: async (id: string) => {
+    return apiRequest<ApiResponse<{ notification: any }>>(`/users/notifications/${id}/read`, {
+      method: 'PUT',
+    });
+  },
+  markAllNotificationsRead: async () => {
+    return apiRequest<ApiResponse<any>>('/users/notifications/read-all', {
+      method: 'PUT',
     });
   },
 };

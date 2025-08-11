@@ -61,6 +61,7 @@ const AccommodationDetails = () => {
   const [accommodation, setAccommodation] = useState<Accommodation | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [booking, setBooking] = useState({
     checkIn: "",
     checkOut: "",
@@ -70,6 +71,12 @@ const AccommodationDetails = () => {
   const [showVerificationReminder, setShowVerificationReminder] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Derived booking values
+  const nights = booking.checkIn && booking.checkOut
+    ? Math.max(1, Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24)))
+    : 1;
+  const guestsCount = parseInt(booking.guests || '1', 10) || 1;
 
   useEffect(() => {
     const fetchAccommodation = async () => {
@@ -125,6 +132,7 @@ const AccommodationDetails = () => {
     }
 
     try {
+      setSubmitting(true);
       const token = localStorage.getItem("token");
       if (!token) {
         toast({
@@ -172,6 +180,8 @@ const AccommodationDetails = () => {
         description: errorMessage,
         variant: "destructive"
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -326,7 +336,7 @@ const AccommodationDetails = () => {
               <CardContent>
                 <div className="text-center mb-4">
                   <div className="text-3xl font-bold">RWF {accommodation.pricePerNight.toLocaleString()}</div>
-                  <div className="text-muted-foreground">per night</div>
+                  <div className="text-muted-foreground">per person per night</div>
                 </div>
 
                 <Button className="w-full" size="lg" onClick={() => setModalOpen(true)}>
@@ -360,7 +370,7 @@ const AccommodationDetails = () => {
                         </div>
                         <div className="flex items-center mt-1">
                           <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                          {accommodation.averageRating} • RWF {accommodation.pricePerNight.toLocaleString()}/night
+                          {accommodation.averageRating} • RWF {accommodation.pricePerNight.toLocaleString()}/night per person
                         </div>
                       </DialogDescription>
                     </div>
@@ -419,16 +429,23 @@ const AccommodationDetails = () => {
                 <div className="bg-secondary/50 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-medium">Total for {accommodation.type}</p>
-                      <p className="text-sm text-muted-foreground">Includes all taxes and fees</p>
+                      <p className="font-medium">Estimated total</p>
+                      <p className="text-sm text-muted-foreground">
+                        {nights} night{nights > 1 ? 's' : ''} • {guestsCount} {guestsCount > 1 ? 'guests' : 'guest'}
+                      </p>
                     </div>
-                    <p className="text-xl font-bold">RWF {accommodation.pricePerNight.toLocaleString()}</p>
+                    <p className="text-xl font-bold">
+                      RWF {((accommodation.pricePerNight || 0) * nights * guestsCount).toLocaleString()}
+                    </p>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Unit price: RWF {accommodation.pricePerNight.toLocaleString()} per person per night
+                  </p>
                 </div>
 
                 <DialogFooter>
-                  <Button type="submit" className="w-full">
-                    Confirm Booking
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? "Processing..." : "Confirm Booking"}
                   </Button>
                 </DialogFooter>
               </form>

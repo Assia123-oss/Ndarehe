@@ -25,10 +25,10 @@ import {
   Map,
   BookOpen
 } from "lucide-react";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { userApi, bookingsApi } from "@/lib/api";
 
 interface UserProfile {
   id: string;
@@ -92,21 +92,25 @@ const UserDashboard = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/users/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.data.user);
+      const res = await userApi.getProfile();
+      if (res.success && res.data.user) {
+        const u = res.data.user;
+        setProfile({
+          id: u.id,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          email: u.email,
+          phone: u.phone,
+          dateOfBirth: u.dateOfBirth ? new Date(u.dateOfBirth).toISOString().slice(0, 10) : "",
+          isEmailVerified: Boolean(u.isVerified),
+          createdAt: u.createdAt,
+        });
         setEditForm({
-          firstName: data.data.user.firstName,
-          lastName: data.data.user.lastName,
-          phone: data.data.user.phone || "",
-          dateOfBirth: data.data.user.dateOfBirth || ""
+          firstName: u.firstName,
+          lastName: u.lastName,
+          phone: u.phone || "",
+          // dateOfBirth may be ISO string; normalize to YYYY-MM-DD
+          dateOfBirth: u.dateOfBirth ? new Date(u.dateOfBirth).toISOString().slice(0, 10) : "",
         });
       }
     } catch (error) {
@@ -114,7 +118,7 @@ const UserDashboard = () => {
       toast({
         title: "Error",
         description: "Failed to load profile",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -122,23 +126,28 @@ const UserDashboard = () => {
   const fetchUserBookings = async () => {
     setBookingsLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/bookings", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBookings(data.data.bookings);
+      const res = await bookingsApi.getAll();
+      if (res.success && res.data.bookings) {
+        // Map backend shape to UI shape if needed
+        const mapped = res.data.bookings.map((b: any) => ({
+          id: b.id,
+          serviceType: b.serviceType,
+          serviceName: b.accommodation?.name || b.transportation?.name || b.tour?.name || "Service",
+          status: b.status,
+          startDate: b.startDate,
+          endDate: b.endDate,
+          totalAmount: b.totalAmount,
+          participants: b.numberOfPeople,
+          createdAt: b.createdAt,
+        }));
+        setBookings(mapped);
       }
     } catch (error) {
       console.error("Error fetching bookings:", error);
       toast({
         title: "Error",
         description: "Failed to load bookings",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setBookingsLoading(false);
@@ -148,19 +157,9 @@ const UserDashboard = () => {
   const handleProfileUpdate = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/users/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(editForm),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.data.user);
+      const res = await userApi.updateProfile(editForm);
+      if (res.success && res.data.user) {
+        setProfile(res.data.user);
         setIsEditing(false);
         toast({
           title: "Success",
@@ -174,7 +173,7 @@ const UserDashboard = () => {
       toast({
         title: "Error",
         description: "Failed to update profile",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -222,10 +221,8 @@ const UserDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <div className="container mx-auto px-4 py-8">
+    <DashboardLayout title="Dashboard">
+      <div className="px-0 py-0">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">My Dashboard</h1>
           <p className="text-muted-foreground">Manage your profile, bookings, and account settings</p>
@@ -527,9 +524,7 @@ const UserDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      <Footer />
-    </div>
+    </DashboardLayout>
   );
 };
 
