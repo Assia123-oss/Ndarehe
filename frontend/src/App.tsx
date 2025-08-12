@@ -25,6 +25,7 @@ import Tours from "./pages/Tours";
 import TourDetails from "./pages/TourDetails";
 import MyBookings from "./pages/MyBookings";
 import Profile from "./pages/Profile";
+import ProfileDashboard from "./pages/dashboard/ProfileDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WhatsAppSupport from "./components/WhatsAppSupport";
@@ -91,11 +92,7 @@ function App() {
                 <MyBookings />
               </ProtectedRoute>
             } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
+            <Route path="/dashboard/profile" element={<ProtectedRoute><ProfileDashboard /></ProtectedRoute>} />
           </Routes>
           
           {/* Global WhatsApp Support */}

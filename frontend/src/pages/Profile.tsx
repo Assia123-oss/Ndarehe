@@ -37,7 +37,7 @@ interface UserProfile {
   createdAt: string;
 }
 
-const Profile = () => {
+const Profile = ({ showLayout = true }: { showLayout?: boolean }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -143,7 +143,7 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {showLayout && <Header />}
       
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -330,7 +330,7 @@ const Profile = () => {
         </div>
       </main>
 
-      <Footer />
+      {showLayout && <Footer />}
     </div>
   );
 };
