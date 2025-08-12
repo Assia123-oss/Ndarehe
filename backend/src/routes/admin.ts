@@ -284,7 +284,10 @@ router.get('/dashboard', async (req: AuthRequest, res: Response, next: NextFunct
       totalBookings,
       totalRevenue,
       recentBookings,
-      pendingBookings
+      pendingBookings,
+      pendingTripPlans,
+      unverifiedAccommodations,
+      unverifiedTransportation
     ] = await Promise.all([
       prisma.user.count(),
       prisma.accommodation.count(),
@@ -307,7 +310,12 @@ router.get('/dashboard', async (req: AuthRequest, res: Response, next: NextFunct
       }),
       prisma.booking.count({
         where: { status: 'PENDING' }
-      })
+      }),
+      prisma.tripPlan.count({
+        where: { status: 'PENDING' }
+      }),
+      prisma.accommodation.count({ where: { isVerified: false } }),
+      prisma.transportation.count({ where: { isVerified: false } })
     ]);
 
     res.json({
@@ -320,7 +328,10 @@ router.get('/dashboard', async (req: AuthRequest, res: Response, next: NextFunct
           totalTransportation,
           totalBookings,
           totalRevenue: totalRevenue._sum.amount || 0,
-          pendingBookings
+          pendingBookings,
+          pendingTripPlans,
+          unverifiedAccommodations,
+          unverifiedTransportation
         },
         recentBookings
       }
@@ -712,4 +723,53 @@ router.put('/settings/:key', async (req: AuthRequest, res: Response, next: NextF
   }
 });
 
-export default router; 
+// @desc    Get pending items for admin review
+// @route   GET /api/admin/pending
+// @access  Private (Admin only)
+router.get('/pending', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const [bookings, tripPlans, accommodations, transportation] = await Promise.all([
+      prisma.booking.findMany({
+        where: { status: 'PENDING' },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true } },
+          accommodation: { select: { name: true, isPartner: true, partnerName: true } },
+          transportation: { select: { name: true, type: true, isPartner: true, partnerName: true } },
+          tour: { select: { name: true, type: true } },
+          payment: { select: { status: true, amount: true } }
+        },
+        take: 25
+      }),
+      prisma.tripPlan.findMany({
+        where: { status: 'PENDING' },
+        orderBy: { createdAt: 'desc' },
+        take: 25
+      }),
+      prisma.accommodation.findMany({
+        where: { isVerified: false },
+        orderBy: { createdAt: 'desc' },
+        take: 25
+      }),
+      prisma.transportation.findMany({
+        where: { isVerified: false },
+        orderBy: { createdAt: 'desc' },
+        take: 25
+      })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        pendingBookings: bookings,
+        pendingTripPlans: tripPlans,
+        unverifiedAccommodations: accommodations,
+        unverifiedTransportation: transportation
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;

@@ -278,6 +278,18 @@ export const paymentsApi = {
       body: JSON.stringify(paymentData),
     });
   },
+  // Single booking payment helper aligned with backend
+  createSingle: async (paymentData: {
+    bookingId: string;
+    amount: number;
+    method: 'CARD' | 'MOBILE_MONEY' | 'BANK_TRANSFER' | 'CASH' | 'PAYPAL';
+    currency?: string;
+  }) => {
+    return apiRequest<ApiResponse<{ payment: any }>>('/payments', {
+      method: 'POST',
+      body: JSON.stringify(paymentData),
+    });
+  },
 
   getAll: async (params?: {
     page?: number;
