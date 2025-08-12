@@ -4,7 +4,7 @@ import AirportPickup from '@/pages/AirportPickup';
 export default function AirportPickupDashboard() {
   return (
     <DashboardLayout title="Airport Pickup">
-      <AirportPickup />
+      <AirportPickup showLayout={false} />
     </DashboardLayout>
   );
 }

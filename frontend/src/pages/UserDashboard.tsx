@@ -230,7 +230,7 @@ const UserDashboard = () => {
 
         {/* Quick Navigation Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Link to="/accommodations">
+          <Link to="/dashboard/accommodations">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
@@ -244,7 +244,7 @@ const UserDashboard = () => {
             </Card>
           </Link>
           
-          <Link to="/transportation">
+          <Link to="/dashboard/transportation">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
@@ -258,7 +258,7 @@ const UserDashboard = () => {
             </Card>
           </Link>
           
-          <Link to="/tours">
+          <Link to="/dashboard/tours">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
@@ -272,7 +272,7 @@ const UserDashboard = () => {
             </Card>
           </Link>
           
-          <Link to="/my-bookings">
+          <Link to="/dashboard/my-bookings">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">

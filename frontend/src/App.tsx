@@ -16,6 +16,8 @@ import TransportationDashboard from "./pages/dashboard/TransportationDashboard";
 import AirportPickupDashboard from "./pages/dashboard/AirportPickupDashboard";
 import ToursDashboard from "./pages/dashboard/ToursDashboard";
 import Blog from "./pages/Blog";
+import BlogDashboard from "./pages/dashboard/BlogDashboard";
+import MyBookingsDashboard from "./pages/dashboard/MyBookingsDashboard";
 import Explore from "./pages/Explore";
 import AccommodationDetails from "./pages/AccommodationDetails";
 import Transportation from "./pages/Transportation";
@@ -51,7 +53,8 @@ function App() {
             <Route path="/dashboard/transportation" element={<ProtectedRoute><TransportationDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/airport-pickup" element={<ProtectedRoute><AirportPickupDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/tours" element={<ProtectedRoute><ToursDashboard /></ProtectedRoute>} />
-            <Route path="/dashboard/blog" element={<ProtectedRoute><Blog /></ProtectedRoute>} />
+            <Route path="/dashboard/blog" element={<ProtectedRoute><BlogDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/my-bookings" element={<ProtectedRoute><MyBookingsDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
             <Route path="/blog" element={<Blog />} />
