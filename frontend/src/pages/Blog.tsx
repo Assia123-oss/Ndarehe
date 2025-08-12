@@ -380,28 +380,30 @@ Remember, regardless of when you visit, seeing mountain gorillas in their natura
         </div>
 
         {/* Newsletter Signup */}
-        <div className="mt-16">
-          <Card className="bg-primary text-primary-foreground">
-            <CardContent className="p-8 text-center">
-              <h3 className="text-2xl font-bold mb-2">Stay Updated</h3>
-              <p className="text-primary-foreground/80 mb-6">
-                Get the latest travel tips and updates delivered to your inbox
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-                <Input
-                  placeholder="Enter your email"
-                  className="bg-white text-black"
-                />
-                <Button variant="secondary">
-                  Subscribe
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {showLayout && (
+          <div className="mt-16">
+            <Card className="bg-primary text-primary-foreground">
+              <CardContent className="p-8 text-center">
+                <h3 className="text-2xl font-bold mb-2">Stay Updated</h3>
+                <p className="text-primary-foreground/80 mb-6">
+                  Get the latest travel tips and updates delivered to your inbox
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+                  <Input
+                    placeholder="Enter your email"
+                    className="bg-white text-black"
+                  />
+                  <Button variant="secondary">
+                    Subscribe
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
-      <Footer />
+      {showLayout && <Footer />}
     </div>
   );
 };
