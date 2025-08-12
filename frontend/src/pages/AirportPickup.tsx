@@ -11,7 +11,7 @@ import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
-const AirportPickup = () => {
+const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   const [tripType, setTripType] = useState("one-way");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState<any>(null);
@@ -142,7 +142,7 @@ const AirportPickup = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {showLayout && <Header />}
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -363,7 +363,7 @@ const AirportPickup = () => {
         </Dialog>
       </div>
 
-      <Footer />
+      {showLayout && <Footer />}
     </div>
   );
 };

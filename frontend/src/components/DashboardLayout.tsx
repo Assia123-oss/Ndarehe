@@ -56,6 +56,7 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
             <NavLink
               key={to}
               to={to}
+              end={to === '/dashboard'}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
                   isActive ? 'bg-green-100 text-green-700' : 'hover:bg-green-50'
