@@ -4,7 +4,7 @@ import Blog from '@/pages/Blog';
 export default function BlogDashboard() {
   return (
     <DashboardLayout title="Blog">
-      <Blog />
+      <Blog showLayout={false} />
     </DashboardLayout>
   );
 }
