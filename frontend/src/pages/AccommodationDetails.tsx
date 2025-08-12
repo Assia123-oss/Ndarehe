@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Star, Users, ArrowLeft, Check } from "lucide-react";
+import { MapPin, Star, Users, ArrowLeft, Check, Phone, Globe } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -32,6 +32,33 @@ interface Accommodation {
   website: string;
   address: string;
   averageRating: number;
+  // New optional fields to support richer hotel info without breaking existing data
+  contactNumbers?: string[]; // alternative to single phone
+  roomTypes?: Array<{
+    id?: string;
+    name: string;
+    description?: string;
+    capacity?: number;
+    pricePerNight: number;
+    currency?: string;
+    amenities?: string[];
+    images?: string[];
+  }>;
+  seasonalRates?: Array<{
+    season: string;
+    startDate?: string;
+    endDate?: string;
+    pricePerNight: number;
+    currency?: string;
+  }>;
+  specialOffers?: Array<{
+    title: string;
+    description?: string;
+    price?: number;
+    currency?: string;
+    startDate?: string;
+    endDate?: string;
+  }>;
   location: {
     id: string;
     name: string;
@@ -331,6 +358,24 @@ const AccommodationDetails = () => {
                   </div>
                 </div>
 
+                {/* Contact & Website */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="h-4 w-4" />
+                    <span>
+                      {accommodation.contactNumbers?.length
+                        ? accommodation.contactNumbers.join(' • ')
+                        : accommodation.phone || '—'}
+                    </span>
+                  </div>
+                  {accommodation.website && (
+                    <a href={accommodation.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-green-700 hover:underline">
+                      <Globe className="h-4 w-4" />
+                      Visit website
+                    </a>
+                  )}
+                </div>
+
                 {accommodation.amenities && accommodation.amenities.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-2">Amenities</h4>
@@ -339,6 +384,51 @@ const AccommodationDetails = () => {
                         <Badge key={index} variant="outline" className="text-xs">
                           {amenity}
                         </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Room types (optional) */}
+                {accommodation.roomTypes && accommodation.roomTypes.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-2">Room types</h4>
+                    <div className="space-y-3">
+                      {accommodation.roomTypes.map((room, idx) => (
+                        <div key={room.id || idx} className="flex items-start justify-between gap-4 border rounded-md p-3">
+                          <div>
+                            <p className="font-medium">{room.name}</p>
+                            {room.description && <p className="text-sm text-muted-foreground">{room.description}</p>}
+                            {room.capacity && (
+                              <p className="text-xs text-muted-foreground">Sleeps up to {room.capacity} guests</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">{room.currency || accommodation.currency} {room.pricePerNight.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Special offers (optional) */}
+                {accommodation.specialOffers && accommodation.specialOffers.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-2">Special offers</h4>
+                    <div className="space-y-3">
+                      {accommodation.specialOffers.map((offer, idx) => (
+                        <div key={idx} className="flex items-start justify-between gap-4 border rounded-md p-3 bg-green-50">
+                          <div>
+                            <p className="font-medium">{offer.title}</p>
+                            {offer.description && <p className="text-sm text-muted-foreground">{offer.description}</p>}
+                          </div>
+                          {offer.price && (
+                            <div className="text-right">
+                              <p className="font-semibold">{offer.currency || accommodation.currency} {offer.price.toLocaleString()}</p>
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>
