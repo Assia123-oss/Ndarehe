@@ -4,7 +4,7 @@ import MyBookings from '@/pages/MyBookings';
 export default function MyBookingsDashboard() {
   return (
     <DashboardLayout title="My Bookings">
-      <MyBookings />
+      <MyBookings showLayout={false} />
     </DashboardLayout>
   );
 }

@@ -288,14 +288,10 @@ const UserDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile
-            </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Bookings
             </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
@@ -412,55 +408,7 @@ const UserDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Bookings Tab */}
-          <TabsContent value="bookings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>My Bookings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {bookingsLoading ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Loading bookings...</p>
-                  </div>
-                ) : bookings.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No bookings found</p>
-                    <Button className="mt-4" onClick={() => window.location.href = "/"}>
-                      Start Booking
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {bookings.map((booking) => (
-                      <Card key={booking.id} className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            {getServiceIcon(booking.serviceType)}
-                            <div>
-                              <h4 className="font-semibold">{booking.serviceName}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(booking.startDate).toLocaleDateString()}
-                                {booking.endDate && ` - ${new Date(booking.endDate).toLocaleDateString()}`}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {booking.participants} {booking.participants === 1 ? 'person' : 'people'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">RWF {booking.totalAmount.toLocaleString()}</p>
-                            {getStatusBadge(booking.status)}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Bookings tab removed per request */}
 
           {/* Payments Tab */}
           <TabsContent value="payments" className="space-y-6">
