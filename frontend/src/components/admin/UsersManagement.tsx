@@ -39,7 +39,12 @@ interface User {
 
 const UsersManagement: React.FC = () => {
   const { token } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
+  const mockUsers: User[] = [
+    { id: 'u_1', email: 'alice@example.com', firstName: 'Alice', lastName: 'Mugisha', phone: '+250788000111', role: 'ADMIN', isVerified: true, isActive: true, language: 'en', createdAt: new Date().toISOString() },
+    { id: 'u_2', email: 'brian@example.com', firstName: 'Brian', lastName: 'Kamanzi', phone: '+250788000222', role: 'USER', isVerified: true, isActive: true, language: 'en', createdAt: new Date(Date.now()-86400000*10).toISOString() },
+    { id: 'u_3', email: 'claire@example.com', firstName: 'Claire', lastName: 'Niyonsaba', phone: '+250788000333', role: 'PROVIDER', isVerified: false, isActive: true, language: 'en', createdAt: new Date(Date.now()-86400000*30).toISOString() },
+  ];
+  const [users, setUsers] = useState<User[]>(mockUsers);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -58,7 +63,8 @@ const UsersManagement: React.FC = () => {
       });
       const data = await response.json();
       if (data.success) {
-        setUsers(data.data);
+        const list = Array.isArray(data.data?.users) ? data.data.users : [];
+        setUsers(list);
       }
     } catch (error) {
       console.error('Error fetching users:', error);

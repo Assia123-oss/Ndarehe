@@ -40,7 +40,50 @@ interface Booking {
 
 const BookingsManagement: React.FC = () => {
   const { token } = useAuth();
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const mockBookings: Booking[] = [
+    {
+      id: 'bkg_1',
+      userId: 'u_1',
+      guestName: 'Alice M',
+      serviceType: 'ACCOMMODATION',
+      serviceName: 'Kigali Heights Hotel',
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now()+86400000).toISOString(),
+      numberOfPeople: 2,
+      totalAmount: 240000,
+      currency: 'RWF',
+      status: 'CONFIRMED',
+      createdAt: new Date().toISOString(),
+      specialRequests: 'Late check-in',
+    },
+    {
+      id: 'bkg_2',
+      userId: 'u_2',
+      guestName: 'Brian K',
+      serviceType: 'TRANSPORTATION',
+      serviceName: 'Airport Pickup - Sedan',
+      startDate: new Date().toISOString(),
+      numberOfPeople: 1,
+      totalAmount: 15000,
+      currency: 'RWF',
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'bkg_3',
+      userId: 'u_3',
+      guestName: 'Claire N',
+      serviceType: 'TOUR',
+      serviceName: 'Kigali City Tour',
+      startDate: new Date().toISOString(),
+      numberOfPeople: 3,
+      totalAmount: 60000,
+      currency: 'RWF',
+      status: 'COMPLETED',
+      createdAt: new Date(Date.now()-86400000*3).toISOString(),
+    },
+  ];
+  const [bookings, setBookings] = useState<Booking[]>(mockBookings);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -59,7 +102,24 @@ const BookingsManagement: React.FC = () => {
       });
       const data = await response.json();
       if (data.success) {
-        setBookings(data.data);
+        const list = Array.isArray(data.data?.bookings) ? data.data.bookings : [];
+        // map to local shape if needed
+        const shaped: Booking[] = list.map((b: any) => ({
+          id: b.id,
+          userId: b.userId,
+          guestName: `${b.user?.firstName || ''} ${b.user?.lastName || ''}`.trim() || b.user?.email || 'Guest',
+          serviceType: b.serviceType,
+          serviceName: b.accommodation?.name || b.transportation?.name || b.tour?.name || 'Service',
+          startDate: b.startDate,
+          endDate: b.endDate,
+          numberOfPeople: b.numberOfPeople,
+          totalAmount: b.totalAmount,
+          currency: b.currency,
+          status: b.status,
+          createdAt: b.createdAt,
+          specialRequests: b.specialRequests || '',
+        }));
+        setBookings(shaped);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);

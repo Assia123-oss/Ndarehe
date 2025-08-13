@@ -18,27 +18,43 @@ import {
   Plus,
   Search,
   Filter,
-  Download
+  Download,
+  LogOut as Logout
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import UsersManagement from "./admin/UsersManagement";
 import AccommodationsManagement from "./admin/AccommodationsManagement";
 import BookingsManagement from "./admin/BookingsManagement";
+import TransportationManagement from "./admin/TransportationManagement";
+import ToursManagement from "./admin/ToursManagement";
+import ReportsPanel from "./admin/ReportsPanel";
+import SettingsPanel from "./admin/SettingsPanel";
+import AnalyticsPanel from "./admin/AnalyticsPanel";
+import NotificationsPanel from "./admin/NotificationsPanel";
+import HelpPanel from "./admin/HelpPanel";
+import { AddNewModal, ExportReportModal } from "./admin/DashboardModals";
+import { useNavigate } from "react-router-dom";
 
 const AdminDashboard: React.FC = () => {
-  const { user, token } = useAuth();
+  const { user, token, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({
     totalUsers: 0,
+    totalAccommodations: 0,
+    totalTours: 0,
+    totalTransportation: 0,
     totalBookings: 0,
     totalRevenue: 0,
     pendingBookings: 0,
-    activeAccommodations: 0,
-    activeTours: 0,
-    activeTransportation: 0
+    pendingTripPlans: 0,
+    unverifiedAccommodations: 0,
+    unverifiedTransportation: 0,
   });
-  const [recentActivity, setRecentActivity] = useState([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [addNewOpen, setAddNewOpen] = useState(false);
 
   useEffect(() => {
     // Fetch dashboard stats and recent activity from backend
@@ -51,34 +67,30 @@ const AdminDashboard: React.FC = () => {
           }
         });
         if (res.data.success) {
-          setStats(res.data.data.stats);
-          // Combine recent bookings and users for activity feed
-          const bookings = (res.data.data.recentBookings || []).map(b => ({
+          setStats(res.data.data.stats || {});
+          // Recent activity from recent bookings
+          const bookings = (res.data.data.recentBookings || []).map((b: any) => ({
             id: b.id,
-            type: 'booking_confirmed',
-            message: `Booking #${b.code || b.id} confirmed for ${b.accommodation?.name || 'Accommodation'}`,
+            type: b.status === 'CONFIRMED' ? 'booking_confirmed' : 'booking_created',
+            message: `${b.status === 'CONFIRMED' ? 'Booking confirmed' : 'New booking'} • ${(b.accommodation?.name || b.transportation?.name || b.tour?.name || 'Service')}`,
             timestamp: new Date(b.createdAt).toLocaleString(),
             priority: b.status === 'CONFIRMED' ? 'medium' : 'low'
           }));
-          const users = (res.data.data.recentUsers || []).map(u => ({
-            id: u.id,
-            type: 'user_registration',
-            message: `New user registered: ${u.email}`,
-            timestamp: new Date(u.createdAt).toLocaleString(),
-            priority: 'low'
-          }));
-          setRecentActivity([...bookings, ...users]);
+          setRecentActivity(bookings);
         }
       } catch (err) {
         // fallback to empty data
         setStats({
           totalUsers: 0,
+          totalAccommodations: 0,
+          totalTours: 0,
+          totalTransportation: 0,
           totalBookings: 0,
           totalRevenue: 0,
           pendingBookings: 0,
-          activeAccommodations: 0,
-          activeTours: 0,
-          activeTransportation: 0
+          pendingTripPlans: 0,
+          unverifiedAccommodations: 0,
+          unverifiedTransportation: 0,
         });
         setRecentActivity([]);
       }
@@ -86,6 +98,11 @@ const AdminDashboard: React.FC = () => {
     };
     fetchDashboard();
   }, [token]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   const getAlertIcon = (type: string) => {
     switch (type) {
@@ -166,7 +183,16 @@ const AdminDashboard: React.FC = () => {
             ))}
           </div>
         </nav>
-        <div className="p-4 text-xs text-green-100 opacity-70">Admin Panel</div>
+        <div className="p-4 flex flex-col items-center space-y-2">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center px-4 py-2 text-base font-medium rounded-lg bg-white text-green-700 hover:bg-green-100 transition-colors duration-150 shadow"
+          >
+            <Logout className="h-5 w-5 mr-2" />
+            Logout
+          </button>
+          <span className="text-xs text-green-100 opacity-70">Admin Panel</span>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -180,11 +206,11 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-gray-500 text-lg">Welcome back, <span className="font-semibold">{user?.firstName}</span>!</p>
               </div>
               <div className="flex space-x-3">
-                <Button variant="outline" className="border-green-600 text-green-700 hover:bg-green-50">
+                <Button variant="outline" className="border-green-600 text-green-700 hover:bg-green-50" onClick={() => setExportOpen(true)}>
                   <Download className="h-4 w-4 mr-2" />
                   Export Report
                 </Button>
-                <Button className="bg-green-600 hover:bg-green-700 text-white">
+                <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setAddNewOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add New
                 </Button>
@@ -278,56 +304,18 @@ const AdminDashboard: React.FC = () => {
         {activeTab === 'bookings' && <BookingsManagement />}
         {activeTab === 'users' && <UsersManagement />}
         {activeTab === 'accommodations' && <AccommodationsManagement />}
-        {activeTab === 'transportation' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <Car className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Transportation Management</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'tours' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <MapPin className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Tours Management</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'reports' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <BarChart3 className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Reports</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'settings' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <BarChart3 className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Settings</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'analytics' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <TrendingUp className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Analytics</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'notifications' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <AlertTriangle className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Notifications</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'help' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <Eye className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Help</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
+        {activeTab === 'transportation' && <TransportationManagement />}
+        {activeTab === 'tours' && <ToursManagement />}
+        {activeTab === 'reports' && <ReportsPanel />}
+        {activeTab === 'settings' && <SettingsPanel />}
+        {activeTab === 'analytics' && <AnalyticsPanel />}
+        {activeTab === 'notifications' && <NotificationsPanel />}
+        {activeTab === 'help' && <HelpPanel />}
       </main>
+
+      {/* Global modals */}
+      <ExportReportModal open={exportOpen} onOpenChange={setExportOpen} />
+      <AddNewModal open={addNewOpen} onOpenChange={setAddNewOpen} />
     </div>
   );
 };
