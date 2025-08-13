@@ -96,7 +96,7 @@ const Accommodations = () => {
 
   const accommodationTypes = ["HOTEL", "GUESTHOUSE", "APARTMENT", "VILLA", "HOSTEL", "CAMPING", "HOMESTAY"];
   const categories = ["BUDGET", "STANDARD", "PREMIUM", "LUXURY"];
-  const locations = ["Kigali", "Gisenyi", "Butare", "Ruhengeri"];
+  const locations = ["Nyarutarama", "Gacuriro", "Gishushu", "Gisozi","Kimihurura"];
 
   if (loading) {
     const content = (
@@ -279,7 +279,7 @@ const Accommodations = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <span className="text-2xl font-bold">
-                      RWF {accommodation.pricePerNight.toLocaleString()}
+                      {accommodation.currency} {accommodation.pricePerNight.toLocaleString()}
                     </span>
                     <span className="text-sm text-muted-foreground"> / night</span>
                   </div>
