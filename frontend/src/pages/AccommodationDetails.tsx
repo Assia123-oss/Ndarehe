@@ -475,7 +475,7 @@ const AccommodationDetails = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-center mb-4">
-                  <div className="text-3xl font-bold">RWF {accommodation.pricePerNight.toLocaleString()}</div>
+                  <div className="text-3xl font-bold">{accommodation.currency} {accommodation.pricePerNight.toLocaleString()}</div>
                   <div className="text-muted-foreground">per person per night</div>
                 </div>
 
@@ -510,7 +510,7 @@ const AccommodationDetails = () => {
                         </div>
                         <div className="flex items-center mt-1">
                           <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                          {accommodation.averageRating} • RWF {accommodation.pricePerNight.toLocaleString()}/night per person
+                          {accommodation.averageRating} • {accommodation.currency} {accommodation.pricePerNight.toLocaleString()}/night per person
                         </div>
                       </DialogDescription>
                     </div>
@@ -582,7 +582,7 @@ const AccommodationDetails = () => {
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Unit price: RWF {accommodation.pricePerNight.toLocaleString()} per person per night
+                    Unit price: {accommodation.currency} {accommodation.pricePerNight.toLocaleString()} per person per night
                   </p>
                 </div>
 

@@ -40,13 +40,13 @@ const Contact = () => {
     {
       icon: Mail,
       title: "Email",
-      value: "info@ndarehe.com",
+      value: "dianekund@gmail.com",
       description: "Send us an email anytime"
     },
     {
       icon: Phone,
       title: "Phone",
-      value: "+250 788 123 456",
+      value: "+250785845701",
       description: "Call us during business hours"
     },
     {
