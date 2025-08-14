@@ -18,6 +18,7 @@ const Explore = () => {
       id: 1,
       title: "Accommodations",
       description: "Find the perfect place to stay in Rwanda",
+      icon: Hotel,
       href: "/accommodations",
       color: "bg-green-50 text-green-600"
     },
@@ -91,7 +92,7 @@ const Explore = () => {
                           navigate(services.find(s => s.id === item.id)?.href || "/");
                         } else {
                           // Redirect to login page with redirect parameter
-                          navigate(`/login?redirect=${encodeURIComponent(services.find(s => s.id === item.id)?.href || "/user-dashboard")}`);
+                          navigate(`/login?redirect=${encodeURIComponent(services.find(s => s.id === item.id)?.href || "/")}`);
                         }
                       }
                     }}

@@ -35,7 +35,7 @@ const apiRequest = async <T>(
   options: RequestInit = {}
 ): Promise<T> => {
   const token = getAuthToken();
-  
+
   const config: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
@@ -70,16 +70,27 @@ export const authApi = {
     });
   },
 
-    logout: async () => {
-    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include', // Important for cookies if using them
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    });
-    return response.json();
+  logout: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      // Accept 401 responses as successful logout
+      if (response.status === 401 || response.ok) {
+        return { success: true };
+      }
+
+      throw new Error('Logout failed');
+    } catch (error) {
+      // Treat all errors as successful logout
+      return { success: true };
+    }
   },
 
   verifyEmail: async (token: string) => {
@@ -160,10 +171,10 @@ export const accommodationsApi = {
         }
       });
     }
-    
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/accommodations?${queryString}` : '/accommodations';
-    
+
     return apiRequest<ApiResponse<{ accommodations: any[]; pagination: any }>>(endpoint);
   },
 
@@ -191,10 +202,10 @@ export const toursApi = {
         }
       });
     }
-    
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/tours?${queryString}` : '/tours';
-    
+
     return apiRequest<ApiResponse<{ tours: any[]; pagination: any }>>(endpoint);
   },
 
@@ -222,10 +233,10 @@ export const transportationApi = {
         }
       });
     }
-    
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/transportation?${queryString}` : '/transportation';
-    
+
     return apiRequest<ApiResponse<{ transportation: any[]; pagination: any }>>(endpoint);
   },
 
@@ -263,10 +274,10 @@ export const bookingsApi = {
         }
       });
     }
-    
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/bookings?${queryString}` : '/bookings';
-    
+
     return apiRequest<ApiResponse<{ bookings: any[]; pagination: any }>>(endpoint);
   },
 
@@ -315,10 +326,10 @@ export const paymentsApi = {
         }
       });
     }
-    
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/payments?${queryString}` : '/payments';
-    
+
     return apiRequest<ApiResponse<{ payments: any[]; pagination: any }>>(endpoint);
   },
 };
