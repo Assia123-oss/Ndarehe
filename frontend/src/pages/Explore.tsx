@@ -92,7 +92,7 @@ const Explore = () => {
                           navigate(services.find(s => s.id === item.id)?.href || "/");
                         } else {
                           // Redirect to login page with redirect parameter
-                          navigate(`/login?redirect=${encodeURIComponent(services.find(s => s.id === item.id)?.href || "/")}`);
+                          navigate(`/login?redirect=${encodeURIComponent(services.find(s => s.id === item.id)?.href || "/user-dashboard")}`);
                         }
                       }
                     }}

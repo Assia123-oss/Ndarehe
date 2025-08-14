@@ -66,11 +66,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const logout = () => {
+const logout = async () => {
+  try {
+    await authApi.logout();
+  } catch (error) {
+    console.error('Logout API error:', error);
+  } finally {
+    // Clear all auth-related data
     setToken(null);
     setUser(null);
     localStorage.removeItem("token");
-  };
+    sessionStorage.removeItem("token"); // If using sessionStorage
+    
+    // Clear any cached queries if using React Query
+    // if (queryClient) {
+    //   queryClient.clear();
+    // }
+  }
+};
 
   const updateUserVerification = (isVerified: boolean) => {
     if (user) {

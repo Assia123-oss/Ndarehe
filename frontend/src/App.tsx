@@ -31,8 +31,12 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import WhatsAppSupport from "./components/WhatsAppSupport";
 import { AuthProvider } from "./hooks/useAuth";
 import { Toaster } from "./components/ui/toaster";
+import DashboardLayout from "./components/DashboardLayout";
+import { useAuth } from "./hooks/useAuth";
+import { Navigate } from "react-router-dom";
 
 function App() {
+  const { user } = useAuth(); 
   return (
     <AuthProvider>
       <Router>
@@ -58,35 +62,39 @@ function App() {
             <Route path="/dashboard/my-bookings" element={<ProtectedRoute><MyBookingsDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/accommodations/:id" element={
+              <DashboardLayout title="Accommodation Details">
+                <AccommodationDetails />
+              </DashboardLayout>} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/explore" element={<Explore />} />
-            
+
             {/* Protected Routes */}
             <Route path="/accommodations" element={
               <ProtectedRoute>
                 <Accommodations />
               </ProtectedRoute>
             } />
-                          <Route path="/accommodation/:id" element={
-                <ProtectedRoute>
-                  <AccommodationDetails />
-                </ProtectedRoute>
-              } />
+            <Route path="/accommodation/:id" element={
+              <ProtectedRoute>
+                <AccommodationDetails />
+              </ProtectedRoute>
+            } />
             <Route path="/transportation" element={
               <ProtectedRoute>
                 <Transportation />
               </ProtectedRoute>
             } />
-                    <Route path="/tours" element={
-          <ProtectedRoute>
-            <Tours />
-          </ProtectedRoute>
-        } />
-        <Route path="/tour/:id" element={
-          <ProtectedRoute>
-            <TourDetails />
-          </ProtectedRoute>
-        } />
+            <Route path="/tours" element={
+              <ProtectedRoute>
+                <Tours />
+              </ProtectedRoute>
+            } />
+            <Route path="/tour/:id" element={
+              <ProtectedRoute>
+                <TourDetails />
+              </ProtectedRoute>
+            } />
             <Route path="/my-bookings" element={
               <ProtectedRoute>
                 <MyBookings />
@@ -94,10 +102,10 @@ function App() {
             } />
             <Route path="/dashboard/profile" element={<ProtectedRoute><ProfileDashboard /></ProtectedRoute>} />
           </Routes>
-          
+
           {/* Global WhatsApp Support */}
           <WhatsAppSupport />
-          
+
           {/* Global Toaster */}
           <Toaster />
         </div>

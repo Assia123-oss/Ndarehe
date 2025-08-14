@@ -70,6 +70,18 @@ export const authApi = {
     });
   },
 
+    logout: async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include', // Important for cookies if using them
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+    return response.json();
+  },
+
   verifyEmail: async (token: string) => {
     return apiRequest<ApiResponse<any>>('/auth/verify-email', {
       method: 'POST',
