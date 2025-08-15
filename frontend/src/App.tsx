@@ -39,7 +39,7 @@ import { useAuth } from "./hooks/useAuth";
 import { Navigate } from "react-router-dom";
 
 function App() {
-  const { user } = useAuth(); 
+  const { user } = useAuth();
   return (
     <AuthProvider>
       <Router>
@@ -58,29 +58,35 @@ function App() {
             <Route path="/local-experiences" element={<LocalExperiences />} />
             <Route path="/trip-planner" element={<TripPlanner />} />
             <Route path="/booking-summary" element={<BookingSummary />} />
-            
-            {/* Role-based protected routes */}
-            <Route path="/admin" element={
-              <RoleBasedRoute allowedRoles={["ADMIN"]}>
-                <Admin />
-              </RoleBasedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <RoleBasedRoute allowedRoles={["USER"]}>
-                <UserDashboard />
-              </RoleBasedRoute>
-            } />
-            <Route path="/provider-dashboard" element={
-              <RoleBasedRoute allowedRoles={["PROVIDER"]}>
-                <ProviderDashboard />
-              </RoleBasedRoute>
-            } />
-            
+
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/dashboard" element={<UserDashboard />} />
+
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <RoleBasedRoute allowedRoles={["USER"]}>
+                  <UserDashboard />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <RoleBasedRoute allowedRoles={["ADMIN"]}>
+                  <Admin />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/provider-dashboard" element={
+              <ProtectedRoute>
+                <RoleBasedRoute allowedRoles={["PROVIDER"]}>
+                  <ProviderDashboard />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard/accommodations" element={<ProtectedRoute><AccommodationsDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/transportation" element={<ProtectedRoute><TransportationDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/airport-pickup" element={<ProtectedRoute><AirportPickupDashboard /></ProtectedRoute>} />
@@ -99,7 +105,7 @@ function App() {
             {/* Protected Routes */}
             <Route path="/blog" element={<Blog />} />
             <Route path="/explore" element={<Explore />} />
-            
+
             {/* Protected dashboard sub-routes */}
             <Route path="/dashboard/accommodations" element={
               <RoleBasedRoute allowedRoles={["USER"]}>
@@ -136,7 +142,7 @@ function App() {
                 <ProfileDashboard />
               </RoleBasedRoute>
             } />
-            
+
             {/* Protected service routes */}
             <Route path="/accommodations" element={
               <ProtectedRoute>
