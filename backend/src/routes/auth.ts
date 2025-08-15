@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../config/database';
+import { logActivity } from '../utils/activity';
+import { ActivityType } from '@prisma/client';
 import { protect } from '../middleware/auth';
 import { validate, authSchemas } from '../middleware/validation';
 import { sendEmail, emailTemplates } from '../utils/email';
@@ -222,6 +224,15 @@ router.post('/register', validate(authSchemas.register), async (req, res, next) 
       }
     });
 
+    // Log activity
+    logActivity({
+      type: ActivityType.USER_REGISTERED,
+      actorUserId: user.id,
+      targetType: 'USER',
+      targetId: user.id,
+      message: `User registered: ${user.email}`,
+    }).catch(() => {});
+
     // Generate verification token
     const verificationToken = generateEmailVerificationToken(user.id);
 
@@ -318,6 +329,15 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
         token
       }
     });
+
+    // Log activity
+    logActivity({
+      type: ActivityType.USER_LOGGED_IN,
+      actorUserId: user.id,
+      targetType: 'USER',
+      targetId: user.id,
+      message: `User logged in: ${user.email}`,
+    }).catch(() => {});
   } catch (error) {
     next(error);
   }
@@ -593,6 +613,17 @@ router.post('/logout', protect, (req, res) => {
     success: true,
     message: 'Logged out successfully'
   });
+
+  // Log activity
+  if ((req as any).user?.id && (req as any).user?.email) {
+    logActivity({
+      type: ActivityType.USER_LOGGED_OUT,
+      actorUserId: (req as any).user.id,
+      targetType: 'USER',
+      targetId: (req as any).user.id,
+      message: `User logged out: ${(req as any).user.email}`,
+    }).catch(() => {});
+  }
 });
 
 export default router; 
