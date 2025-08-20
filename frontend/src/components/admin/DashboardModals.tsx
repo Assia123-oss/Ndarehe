@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { adminApi } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ExportModalProps {
   open: boolean;
@@ -12,14 +14,41 @@ interface ExportModalProps {
 }
 
 export const ExportReportModal: React.FC<ExportModalProps> = ({ open, onOpenChange }) => {
-  const handleExport = () => {
-    const csv = 'Metric,Value\nUsers,0\nBookings,0\nRevenue,0\n';
-    const blob = new Blob([csv], { type: 'text/csv' });
+  // Pull latest stats from DOM-safe custom event or ask backend live
+  const buildCsv = async (): Promise<string> => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/admin/dashboard', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const json = await res.json();
+      const s = json?.data?.stats || {};
+      const rows = [
+        ['Metric','Value'],
+        ['Total Users', s.totalUsers ?? 0],
+        ['Total Bookings', s.totalBookings ?? 0],
+        ['Total Revenue', s.totalRevenue ?? 0],
+        ['Pending Bookings', s.pendingBookings ?? 0],
+        ['Pending Trip Plans', s.pendingTripPlans ?? 0],
+        ['Unverified Accommodations', s.unverifiedAccommodations ?? 0],
+        ['Unverified Transportation', s.unverifiedTransportation ?? 0],
+      ];
+      return rows.map(r => r.join(',')).join('\n');
+    } catch {
+      return 'Metric,Value\nTotal Users,0\nTotal Bookings,0\nTotal Revenue,0\n';
+    }
+  };
+
+  const handleExport = async () => {
+    const csv = await buildCsv();
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'dashboard-report.csv';
+    a.download = `dashboard-report-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -48,9 +77,11 @@ type CreateType = 'ACCOMMODATION' | 'TRANSPORTATION' | 'TOUR' | 'USER' | '';
 
 export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) => {
   const { toast } = useToast();
+  const { token } = useAuth();
   const [step, setStep] = useState<'choose' | 'form'>('choose');
   const [createType, setCreateType] = useState<CreateType>('');
   const [submitting, setSubmitting] = useState(false);
+  const [locations, setLocations] = useState<any[]>([]);
 
   // Shared helpers
   const [common, setCommon] = useState({ name: '', description: '' });
@@ -110,6 +141,24 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
     role: 'USER'
   });
 
+  // Fetch locations when modal opens
+  React.useEffect(() => {
+    if (open && token) {
+      fetchLocations();
+    }
+  }, [open, token]);
+
+  const fetchLocations = async () => {
+    try {
+      const response = await adminApi.getLocations(token!);
+      if (response.data.success) {
+        setLocations(response.data.data.locations || []);
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+    }
+  };
+
   const resetForm = () => {
     setCommon({ name: '', description: '' });
     setAcc({ type: 'HOTEL', category: 'STANDARD', locationId: '', address: '', pricePerNight: '', currency: 'RWF', maxGuests: '', bedrooms: '', bathrooms: '', amenities: '', images: '' });
@@ -127,17 +176,77 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    if (!token) {
+      toast({ title: 'Error', description: 'Authentication token missing. Please log in.', variant: 'destructive' });
+      setSubmitting(false);
+      return;
+    }
     try {
-      // Placeholder submission; integration will call real endpoints
-      // eslint-disable-next-line no-console
-      console.log('Create', createType, {
-        ...(createType === 'USER' ? user : {}),
-        ...(createType === 'ACCOMMODATION' ? { ...common, ...acc } : {}),
-        ...(createType === 'TRANSPORTATION' ? { ...common, ...trans } : {}),
-        ...(createType === 'TOUR' ? { ...common, ...tour } : {}),
-      });
-      toast({ title: 'Created', description: `${createType} created (placeholder).` });
-      closeAll();
+      let payload: any;
+      let apiCall: Promise<any>;
+
+      switch (createType) {
+        case 'USER':
+          payload = { ...user };
+          apiCall = adminApi.createUser(token, payload);
+          break;
+        case 'ACCOMMODATION':
+          payload = {
+            ...common,
+            ...acc,
+            pricePerNight: parseFloat(acc.pricePerNight),
+            maxGuests: parseInt(acc.maxGuests),
+            bedrooms: parseInt(acc.bedrooms),
+            bathrooms: parseInt(acc.bathrooms),
+            amenities: acc.amenities.split(',').map(s => s.trim()).filter(Boolean),
+            images: acc.images.split(',').map(s => s.trim()).filter(Boolean),
+          };
+          apiCall = adminApi.createAccommodation(token, payload);
+          break;
+        case 'TRANSPORTATION':
+          payload = {
+            ...common,
+            ...trans,
+            capacity: parseInt(trans.capacity),
+            pricePerTrip: parseFloat(trans.pricePerTrip),
+            pricePerHour: trans.pricePerHour ? parseFloat(trans.pricePerHour) : null,
+            amenities: trans.amenities.split(',').map(s => s.trim()).filter(Boolean),
+            images: trans.images.split(',').map(s => s.trim()).filter(Boolean),
+          };
+          apiCall = adminApi.createTransportation(token, payload);
+          break;
+        case 'TOUR':
+          payload = {
+            ...common,
+            ...tour,
+            duration: parseInt(tour.duration),
+            maxParticipants: parseInt(tour.maxParticipants),
+            minParticipants: parseInt(tour.minParticipants),
+            pricePerPerson: parseFloat(tour.pricePerPerson),
+            currency: tour.currency,
+            itinerary: tour.itinerary.split(',').map(s => s.trim()).filter(Boolean),
+            includes: tour.includes.split(',').map(s => s.trim()).filter(Boolean),
+            excludes: tour.excludes.split(',').map(s => s.trim()).filter(Boolean),
+            images: tour.images.split(',').map(s => s.trim()).filter(Boolean),
+            meetingPoint: tour.meetingPoint,
+            startTime: tour.startTime,
+            endTime: tour.endTime,
+          };
+          apiCall = adminApi.createTour(token, payload);
+          break;
+        default:
+          throw new Error('Invalid create type');
+      }
+
+      const res = await apiCall;
+      if (res.data.success) {
+        toast({ title: 'Success', description: `${createType} created successfully.` });
+        closeAll();
+      } else {
+        toast({ title: 'Error', description: res.data.error || `Failed to create ${createType}.`, variant: 'destructive' });
+      }
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.error || error.message || `Failed to create ${createType}.`, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -227,8 +336,17 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Location ID</Label>
-              <Input value={acc.locationId} onChange={(e) => setAcc({ ...acc, locationId: e.target.value })} required />
+              <Label>Location</Label>
+              <Select value={acc.locationId} onValueChange={(v) => setAcc({ ...acc, locationId: v })}>
+                <SelectTrigger><SelectValue placeholder="Select a location" /></SelectTrigger>
+                <SelectContent>
+                  {locations.map(location => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name} - {location.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Address</Label>
@@ -299,8 +417,17 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Location ID</Label>
-              <Input value={trans.locationId} onChange={(e) => setTrans({ ...trans, locationId: e.target.value })} required />
+              <Label>Location</Label>
+              <Select value={trans.locationId} onValueChange={(v) => setTrans({ ...trans, locationId: v })}>
+                <SelectTrigger><SelectValue placeholder="Select a location" /></SelectTrigger>
+                <SelectContent>
+                  {locations.map(location => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name} - {location.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Capacity</Label>
@@ -361,8 +488,17 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Location ID</Label>
-              <Input value={tour.locationId} onChange={(e) => setTour({ ...tour, locationId: e.target.value })} required />
+              <Label>Location</Label>
+              <Select value={tour.locationId} onValueChange={(v) => setTour({ ...tour, locationId: v })}>
+                <SelectTrigger><SelectValue placeholder="Select a location" /></SelectTrigger>
+                <SelectContent>
+                  {locations.map(location => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name} - {location.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Duration (hours)</Label>
@@ -421,7 +557,7 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
     }
 
     return null;
-  }, [step, createType, common, acc, trans, tour, user]);
+  }, [step, createType, common, acc, trans, tour, user, locations]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) closeAll(); else onOpenChange(v); }}>

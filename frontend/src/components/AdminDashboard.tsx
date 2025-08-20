@@ -19,9 +19,11 @@ import {
   Search,
   Filter,
   Download,
-  LogOut as Logout
+  LogOut as Logout,
+  Settings
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { adminApi } from "@/lib/api";
 import UsersManagement from "./admin/UsersManagement";
 import AccommodationsManagement from "./admin/AccommodationsManagement";
 import BookingsManagement from "./admin/BookingsManagement";
@@ -52,6 +54,8 @@ const AdminDashboard: React.FC = () => {
     unverifiedTransportation: 0,
   });
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [activityPage, setActivityPage] = useState(1);
+  const [activityTotalPages, setActivityTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [exportOpen, setExportOpen] = useState(false);
   const [addNewOpen, setAddNewOpen] = useState(false);
@@ -61,25 +65,12 @@ const AdminDashboard: React.FC = () => {
     const fetchDashboard = async () => {
       setLoading(true);
       try {
-        const res = await axios.get('/api/admin/dashboard', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        if (res.data.success) {
-          setStats(res.data.data.stats || {});
-          // Recent activity from recent bookings
-          const bookings = (res.data.data.recentBookings || []).map((b: any) => ({
-            id: b.id,
-            type: b.status === 'CONFIRMED' ? 'booking_confirmed' : 'booking_created',
-            message: `${b.status === 'CONFIRMED' ? 'Booking confirmed' : 'New booking'} • ${(b.accommodation?.name || b.transportation?.name || b.tour?.name || 'Service')}`,
-            timestamp: new Date(b.createdAt).toLocaleString(),
-            priority: b.status === 'CONFIRMED' ? 'medium' : 'low'
-          }));
-          setRecentActivity(bookings);
+        const res = await adminApi.getDashboard();
+        if ((res as any).success) {
+          const payload = (res as any).data || {};
+          setStats(payload.stats || {});
         }
       } catch (err) {
-        // fallback to empty data
         setStats({
           totalUsers: 0,
           totalAccommodations: 0,
@@ -92,12 +83,44 @@ const AdminDashboard: React.FC = () => {
           unverifiedAccommodations: 0,
           unverifiedTransportation: 0,
         });
-        setRecentActivity([]);
       }
+      await loadActivity(1);
       setLoading(false);
     };
     fetchDashboard();
   }, [token]);
+
+  // Auto-refresh activity without full page reload (polling)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadActivity(activityPage);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [activityPage]);
+
+  const loadActivity = async (page: number) => {
+    try {
+      const act = await adminApi.getActivity({ limit: 10, page });
+      if ((act as any).success) {
+        const list = (act as any).data?.activity || [];
+        const meta = (act as any).data?.pagination;
+        const feed = list.map((item: any) => ({
+          id: item.id,
+          type: item.type,
+          message: item.message,
+          timestamp: new Date(item.timestamp).toLocaleString(),
+          priority: ['PAYMENT_FAILED'].includes(item.type) ? 'high' : ['BOOKING_CREATED','ACCOMMODATION_CREATED','TRANSPORTATION_CREATED','TOUR_CREATED','USER_REGISTERED'].includes(item.type) ? 'low' : 'medium'
+        }));
+        setRecentActivity(feed);
+        if (meta) {
+          setActivityPage(meta.page);
+          setActivityTotalPages(meta.totalPages);
+        }
+      }
+    } catch {
+      setRecentActivity([]);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -106,12 +129,27 @@ const AdminDashboard: React.FC = () => {
 
   const getAlertIcon = (type: string) => {
     switch (type) {
-      case 'user_registration':
+      case 'USER_REGISTERED':
         return <Users className="h-4 w-4 text-green-600" />;
-      case 'booking_confirmed':
+      case 'BOOKING_CREATED':
+      case 'BOOKING_CONFIRMED':
+      case 'BOOKING_UPDATED':
         return <Calendar className="h-4 w-4 text-green-600" />;
-      case 'payment_received':
+      case 'PAYMENT_COMPLETED':
         return <TrendingUp className="h-4 w-4 text-green-600" />;
+      case 'PAYMENT_FAILED':
+        return <AlertTriangle className="h-4 w-4 text-red-600" />;
+      case 'ACCOMMODATION_CREATED':
+      case 'ACCOMMODATION_UPDATED':
+      case 'TRANSPORTATION_CREATED':
+      case 'TRANSPORTATION_UPDATED':
+      case 'TOUR_CREATED':
+      case 'TOUR_UPDATED':
+        return <Plus className="h-4 w-4 text-green-600" />;
+      case 'USER_STATUS_UPDATED':
+        return <Users className="h-4 w-4 text-blue-600" />;
+      case 'SYSTEM_SETTING_UPDATED':
+        return <Settings className="h-4 w-4 text-purple-600" />;
       default:
         return <AlertTriangle className="h-4 w-4 text-gray-600" />;
     }
@@ -157,7 +195,6 @@ const AdminDashboard: React.FC = () => {
               { tab: 'reports', label: 'Reports', icon: BarChart3 },
               { tab: 'settings', label: 'Settings', icon: BarChart3 },
               { tab: 'analytics', label: 'Analytics', icon: TrendingUp },
-              { tab: 'notifications', label: 'Notifications', icon: AlertTriangle },
               { tab: 'help', label: 'Help', icon: Eye },
             ].map(({ tab, label, icon: Icon }) => (
               <button
@@ -294,6 +331,11 @@ const AdminDashboard: React.FC = () => {
                       </div>
                     ))
                   )}
+                </div>
+                <div className="flex justify-between items-center mt-4">
+                  <Button variant="outline" disabled={activityPage <= 1} onClick={() => loadActivity(activityPage - 1)}>Previous</Button>
+                  <span className="text-sm text-gray-500">Page {activityPage} of {activityTotalPages}</span>
+                  <Button variant="outline" disabled={activityPage >= activityTotalPages} onClick={() => loadActivity(activityPage + 1)}>Next</Button>
                 </div>
               </CardContent>
             </Card>
